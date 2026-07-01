@@ -13,7 +13,7 @@
 ## 🎬 Demo Video
 
 <p align="center">
-  <a href="demoVideo/Demo.mp4">
+  <a href="Screen Recording 2026-07-01 185213 (1).mp4">
     <img src="https://img.shields.io/badge/▶_Watch_Demo-cabinAI__Demo.mp4-2ea44f?style=for-the-badge" alt="Watch the demo">
   </a>
 </p>
