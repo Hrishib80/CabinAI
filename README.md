@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <video src="demoVideo/cabinAI_Demo.mp4" controls width="720">
+  <video src="Screen Recording 2026-07-01 185213 (1).mp4" controls width="720">
     Your browser does not support embedded video.
     <a href="demoVideo/cabinAI_Demo.mp4">Download / open the demo video</a> instead.
   </video>
