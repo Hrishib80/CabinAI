@@ -1,0 +1,21 @@
+* text=auto
+*.py  text eol=lf
+*.js  text eol=lf
+*.html text eol=lf
+*.css  text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.wav  binary
+*.onnx binary
+*.bin  binary
+*.zip  binary
+*.exe  binary
+models/kokoro-v1.0.onnx filter=lfs diff=lfs merge=lfs -text
+models/voices.bin filter=lfs diff=lfs merge=lfs -text
+models/bge_small_en/onnx/model.onnx filter=lfs diff=lfs merge=lfs -text
+models/distil_whisper_x_elite/encoder.onnx filter=lfs diff=lfs merge=lfs -text
+models/distil_whisper_x_elite/decoder.onnx filter=lfs diff=lfs merge=lfs -text
+models/melotts_en-*/*.bin filter=lfs diff=lfs merge=lfs -text
+demoVideo/Demo.mp4 filter=lfs diff=lfs merge=lfs -text

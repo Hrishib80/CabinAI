@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CabinAI — Hybrid Multi-Agent VLA | SparQ 2026</title>
+  <link rel="stylesheet" href="css/cabin_ai.css?v=5">
+
+  <!-- MediaPipe CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"  crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"                  crossorigin="anonymous"></script>
+  <!-- Three.js (UMD r158) — vendored locally, no CDN. Plain script tag sets window.THREE
+       synchronously before any game/app script runs. Works fully offline / behind corporate proxy. -->
+  <script src="js/vendor/three.min.js"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <span class="header-logo">CABIN<span style="color:#fff">AI</span></span>
+  <span class="header-sub">Hybrid Multi-Agent VLA · SA8775P + AIC100 · SparQ 2026</span>
+  <span class="header-spacer"></span>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button id="export-btn" class="btn btn-secondary" style="font-size:10px;padding:4px 8px" title="Export session JSON">Export ↓</button>
+    <div class="backend-status">
+      <div class="backend-dot" id="backend-dot"></div>
+      <span id="backend-status-text">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- Safety banner -->
+<div id="safety-banner"></div>
+
+<!-- TAB BAR -->
+<div class="tabs">
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="tab1">① Cockpit (Driver + Drive Sim)</button>
+    <button class="tab-btn"        data-tab="tab2">② Knowledge RAG</button>
+    <button class="tab-btn"        data-tab="tab3">③ System Health</button>
+  </div>
+</div>
+
+<!-- TAB CONTENT -->
+<div class="tab-content">
+
+  <!-- ============================================================ -->
+  <!-- TAB 1 — UNIFIED COCKPIT (Camera | Game side-by-side)          -->
+  <!-- ============================================================ -->
+  <div id="tab1" class="tab-panel active">
+
+    <!-- ROW 1: Camera (left) | Game (right) -->
+    <div class="cockpit-row1">
+
+      <!-- Camera -->
+      <div class="cockpit-camera">
+        <div class="cockpit-label">📷 DRIVER CAM · MediaPipe FaceMesh</div>
+        <div class="camera-area">
+          <video id="agent1-video"  autoplay muted playsinline></video>
+          <canvas id="agent1-canvas"></canvas>
+          <div id="cockpit-cam-overlay" class="cockpit-cam-overlay">
+            <span id="cockpit-att">ATT —</span>
+            <span id="cockpit-drwsy">DRWSY —</span>
+            <span id="cockpit-emo">😐 neutral</span>
+          </div>
+          <div id="cockpit-drowsy-badge" class="drowsy-badge">DROWSY — PULL OVER</div>
+        </div>
+      </div>
+
+      <!-- Game -->
+      <div class="cockpit-game">
+        <div class="cockpit-label">🎮 HYDERABAD DRIVE SIM · Gachibowli ↔ ORR ↔ Airport</div>
+        <div class="cockpit-game-wrap">
+          <canvas id="game-canvas"></canvas>
+          <canvas id="game-overlay"></canvas>
+        </div>
+        <div class="cockpit-controls">
+          <button id="game-start-btn" class="btn cockpit-btn-go">▶ START</button>
+          <button id="game-stop-btn"  class="btn btn-secondary cockpit-btn-stop">⏸ STOP</button>
+          <span class="cockpit-hint">↑ accel · ↓ brake · ← → steer</span>
+          <button id="game-weather-btn" class="btn btn-secondary cockpit-btn-tiny">🌦</button>
+          <button id="game-cam-btn" class="btn btn-secondary cockpit-btn-tiny" title="Cycle camera: Cockpit → Hood → Chase">🎥</button>
+          <select id="game-location-select" class="cockpit-select" title="Jump to location">
+            <option value="">📍 Jump to…</option>
+            <option value="0">Gachibowli Stadium</option>
+            <option value="3">DLF Cyber City</option>
+            <option value="6">Durgam Cheruvu Tunnel 🚇</option>
+            <option value="9">IKEA Nallagandla</option>
+            <option value="11">Hi-Tech City</option>
+            <option value="13">ORR Highway</option>
+            <option value="14">Emergency Bay 🚨</option>
+            <option value="16">Shamshabad Airport</option>
+          </select>
+          <span class="cockpit-faults">
+            <button class="fault-btn sim-fault-fuel" data-fault="fuel" title="Inject low fuel">⛽</button>
+            <button class="fault-btn sim-fault-temp" data-fault="temp" title="Inject overheat">🌡</button>
+            <button class="fault-btn sim-fault-oil"  data-fault="oil"  title="Inject low oil">🛢</button>
+            <button class="fault-btn sim-fault-batt" data-fault="battery" title="Inject weak batt">🔋</button>
+          </span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ROW 2: AI bar -->
+    <div class="cockpit-ai-bar">
+      <span class="sim-ai-lbl">🤖 AI Co-pilot:</span>
+      <span id="game-llm-panel">Drive carefully near Gachibowli. I'll alert you about engine, fatigue, or road hazards based on the live RAG.</span>
+    </div>
+
+    <!-- ROW 3: Compact metrics -->
+    <div class="cockpit-metrics">
+      <div class="cockpit-metric">
+        <div class="cockpit-metric-lbl">STATUS</div>
+        <div id="face-status" class="face-indicator">● FACE DETECTED</div>
+      </div>
+      <div class="cockpit-metric">
+        <div class="cockpit-metric-lbl">EAR</div>
+        <div class="metric-value cockpit-mv" id="ear-val">—</div>
+        <div class="metric-bar-bg"><div class="metric-bar" id="ear-bar" style="width:70%"></div></div>
+      </div>
+      <div class="cockpit-metric">
+        <div class="cockpit-metric-lbl">PERCLOS</div>
+        <div class="metric-value cockpit-mv" id="perclos-val">—</div>
+        <div class="metric-bar-bg"><div class="metric-bar" id="perclos-bar" style="width:5%"></div></div>
+      </div>
+      <div class="cockpit-metric">
+        <div class="cockpit-metric-lbl">BLINK/min</div>
+        <div class="metric-value cockpit-mv" id="blink-val">—</div>
+      </div>
+      <div class="cockpit-metric">
+        <div class="cockpit-metric-lbl">EMOTION</div>
+        <div class="metric-value cockpit-mv" id="emotion-val" style="font-size:13px;color:var(--green)">—</div>
+      </div>
+      <div class="cockpit-metric">
+        <div class="cockpit-metric-lbl">ATTENTION</div>
+        <div class="metric-value cockpit-mv" id="attention-val" style="color:var(--green)">—</div>
+        <div class="metric-bar-bg"><div class="metric-bar" id="attention-bar" style="width:90%"></div></div>
+      </div>
+      <div class="cockpit-metric">
+        <div class="cockpit-metric-lbl">DROWSY</div>
+        <div class="metric-value cockpit-mv" id="drowsiness-val" style="color:var(--green)">—</div>
+        <div class="metric-bar-bg"><div class="metric-bar" id="drowsiness-bar" style="width:5%"></div></div>
+      </div>
+      <div class="cockpit-metric">
+        <div class="cockpit-metric-lbl">FPS</div>
+        <div class="metric-value cockpit-mv"><span id="fps-val">—</span></div>
+        <div style="color:var(--muted);font-size:9px">~15ms · 0B cloud</div>
+      </div>
+      <div class="cockpit-metric">
+        <div class="cockpit-metric-lbl">FATIGUE T+15</div>
+        <div class="metric-value cockpit-mv" id="cockpit-fatigue-val" style="color:var(--green)">—</div>
+        <div style="color:var(--muted);font-size:9px" id="cockpit-rest-val">rest: —</div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div id="drowsiness-alert" class="alert-box alert-critical" style="display:none"></div>
+    <div id="proactive-alert"  class="alert-box alert-advisory" style="display:none"></div>
+
+    <!-- ROW 4: Voice agent + State bus + Logs -->
+    <div class="cockpit-row4">
+
+      <!-- Voice -->
+      <div class="cockpit-voice">
+        <div class="cockpit-label">🎙 VOICE AGENT (Whisper → Agent 4 / Agent 6 → MeloTTS)</div>
+        <div class="voice-panel cockpit-voice-panel">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
+            <button class="mic-btn" id="mic-btn" title="Click to start recording">MIC</button>
+            <span class="mic-status ready" id="mic-status">READY</span><span id="noise-badge" class="noise-badge" title="Ambient noise level"></span>
+            <select id="lang-select" title="STT language" style="font-size:10px;padding:2px 4px;background:var(--panel-bg);color:var(--fg);border:1px solid var(--border);border-radius:3px;">
+              <option value="en">EN</option>
+              <option value="hi">&#x0939;&#x093F;&#x0902;</option>
+              <option value="te">&#x0C24;&#x0C46;</option>
+            </select>
+            <div style="display:flex;gap:4px">
+              <button id="tts-btn" title="Voice response on" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--green);cursor:pointer;font-size:14px;padding:2px 5px">🔊</button>
+              <button id="always-on-btn" title="Always-on mic mode" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;font-size:9px;padding:2px 4px">⚫ AO</button>
+            </div>
+          </div>
+          <div class="voice-text">
+            <div class="voice-transcript ready" id="transcript-display">Click MIC and ask about Hyderabad, your car, or directions…</div>
+            <div class="voice-response"   id="response-display"></div>
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:4px">ROUTED</div>
+            <span class="route-badge route-agent4" id="route-label">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- State bus + sync panel -->
+      <div class="cockpit-bus">
+        <div class="cockpit-label">📡 ZEROCLAW STATE BUS · Agent 5 Sync</div>
+        <div class="cockpit-bus-panel">
+          <pre class="bus-json-box" id="state-bus-json">{}</pre>
+          <div class="cockpit-sync-panel">
+            <div class="sync-label">Next Sync</div>
+            <div class="sync-timer" id="sync-countdown">5:00</div>
+            <button class="btn" id="force-sync-btn" style="margin-top:4px;font-size:10px;padding:4px 8px">Force Sync</button>
+            <div class="forecast-box">
+              <span style="color:var(--muted)">T+15: </span><span id="forecast-val" style="color:var(--green)">—</span><br>
+              <span style="color:var(--muted)">conf: </span><span id="confidence-val">—</span><br>
+              <span style="color:var(--muted)">Rest: </span><span id="rest-val">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent log (live SSE log) -->
+      <div class="cockpit-log">
+        <div class="cockpit-label">📜 AGENT LOG (live)</div>
+        <div class="cockpit-log-panel" id="cockpit-log"></div>
+      </div>
+
+    </div>
+
+    <!-- Gesture history -->
+    <div class="cockpit-gesture-row">
+      <div style="color:var(--green);font-size:11px;letter-spacing:1px;flex-shrink:0">✋ GESTURE</div>
+      <div id="gesture-history" style="font-size:11px;color:var(--muted);flex:1"></div>
+    </div>
+
+  </div><!-- /tab1 -->
+
+  <!-- ============================================================ -->
+  <!-- TAB 2 — KNOWLEDGE RAG                                         -->
+  <!-- ============================================================ -->
+  <div id="tab2" class="tab-panel">
+
+    <div class="warning-lights-panel">
+      <h3>⚠ WARNING LIGHTS</h3>
+      <button class="warning-btn" data-question="engine temperature warning light red">🌡 Engine Temperature</button>
+      <button class="warning-btn" data-question="low oil pressure warning light">🛢 Low Oil Pressure</button>
+      <button class="warning-btn" data-question="check engine MIL warning light">🔧 Check Engine</button>
+      <button class="warning-btn" data-question="battery charging system warning light">🔋 Battery / Charging</button>
+      <button class="warning-btn" data-question="brake system warning light red">🛑 Brake System</button>
+      <button class="warning-btn" data-question="tyre pressure TPMS warning light">⭕ Tyre Pressure (TPMS)</button>
+      <button class="warning-btn" data-question="ABS anti-lock braking warning light">🅰 ABS Warning</button>
+      <button class="warning-btn" data-question="airbag SRS warning light">👤 Airbag / SRS</button>
+      <button class="warning-btn" data-question="power steering warning light">🔄 Power Steering</button>
+      <button class="warning-btn" data-question="low fuel warning light">⛽ Low Fuel</button>
+      <hr style="border-color:var(--border);margin:8px 0">
+      <button class="warning-btn" data-question="Durgam Cheruvu tunnel safety">🚇 Tunnel safety</button>
+      <button class="warning-btn" data-question="parking near Gachibowli">🅿 Parking near Gachibowli</button>
+      <button class="warning-btn" data-question="ORR highway speed limit emergency bays">🛣 ORR Highway</button>
+      <button class="warning-btn" data-question="emergency services Hyderabad ambulance hospital">🚨 Emergency services</button>
+      <button class="warning-btn" data-question="should I stop driving I feel tired">😴 Should I stop? (Complex)</button>
+      <button class="warning-btn" data-question="nearest rest stop with facilities for children">🏪 Find rest stop (Cloud)</button>
+    </div>
+
+    <div class="rag-query-area">
+      <input class="rag-input" id="rag-input" type="text" placeholder="Ask about Hyderabad, warning lights, vehicle info, or safety…">
+      <button class="btn" id="rag-ask-btn">Ask</button>
+    </div>
+
+    <div class="rag-response-area">
+      <div class="rag-meta">
+        <span id="rag-source" class="source-local">—</span>
+        <span id="rag-latency" style="color:var(--muted)">—</span>
+        <span style="color:var(--muted)">Agent 7 (local) → Agent 6 if conf &lt; 0.50</span>
+      </div>
+      <div id="rag-response" style="min-height:80px">Select a warning light or type a question…</div>
+    </div>
+
+    <div class="mcp-log-panel" id="mcp-log">
+      <div style="color:var(--muted)">MCP Agent Log — ZeroClaw routing decisions</div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TAB 3 — SYSTEM HEALTH                                         -->
+  <!-- ============================================================ -->
+  <div id="tab3" class="tab-panel">
+
+    <div class="npu-health-panel">
+      <div class="panel-title">NPU Health Monitor</div>
+      <div class="npu-stat"><span class="npu-stat-label">Status</span><span class="npu-stat-value" id="npu-status">nominal</span></div>
+      <div class="npu-stat"><span class="npu-stat-label">Die Temp</span><span class="npu-stat-value" id="npu-temp">45.0°C</span></div>
+      <div class="npu-stat"><span class="npu-stat-label">Memory BER</span><span class="npu-stat-value" id="npu-ber">0.000%</span></div>
+      <div class="npu-stat"><span class="npu-stat-label">Latency Drift</span><span class="npu-stat-value" id="npu-latdev">+0.0ms</span></div>
+      <div class="npu-stat">
+        <span class="npu-stat-label">Health Score</span>
+        <span class="npu-stat-value" id="npu-health-score">—</span>
+        <div class="npu-health-bar-bg"><div class="npu-health-bar-fill" id="npu-health-bar" style="width:100%"></div></div>
+      </div>
+      <div class="npu-stat"><span class="npu-stat-label">Trend</span><span class="npu-stat-value" id="npu-trend">▶ stable</span></div>
+      <div class="npu-stat"><span class="npu-stat-label">Degradation</span><span class="npu-stat-value" id="npu-degradation">Stable</span></div>
+      <div id="model-swap-rec" style="display:none;color:var(--amber);font-size:11px;margin-top:6px"></div>
+
+      <div class="panel-title" style="margin-top:12px">3-Slot Model Standby</div>
+      <div id="model-slots"></div>
+
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary" id="coaching-btn">Generate Coaching Report</button>
+        <button class="btn btn-secondary" id="export-btn-tab3" onclick="document.getElementById('export-btn').click()">Export Session JSON</button>
+      </div>
+    </div>
+
+    <div class="offload-panel">
+      <div class="panel-title">Adaptive Offloading Policy</div>
+      <div id="offload-matrix"></div>
+    </div>
+
+    <div class="agents-panel">
+      <div class="panel-title">Agent Status (All 7)</div>
+      <div id="agent-cards"></div>
+    </div>
+
+    <div id="fl-widget" style="margin:12px 0;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--muted)">
+      Fleet Learning widget — waiting for FL_THRESHOLD_UPDATE event…
+    </div>
+
+    <div class="coaching-section">
+      <div id="coaching-output"></div>
+    </div>
+
+    <div class="time-machine-section">
+      <div id="time-machine-panel"></div>
+    </div>
+
+    <div class="mcp-log-full" id="mcp-log-full">
+      <div style="color:var(--muted)">MCP Communication Log</div>
+    </div>
+
+  </div>
+
+</div><!-- /tab-content -->
+
+<!-- Gesture toast -->
+<div id="gesture-toast"></div>
+
+<!-- App log -->
+<div id="app-log-panel"><div id="app-log"></div></div>
+
+<!-- SCRIPTS -->
+<script src="js/orchestrator/zeroclaw_bus.js?v=5"></script>
+<script src="js/orchestrator/query_router.js?v=5"></script>
+<script src="js/agents/agent1_perception.js?v=5"></script>
+<script src="js/agents/agent2_gesture.js?v=5"></script>
+<script src="js/agents/agent3_speech.js?v=5"></script>
+<script src="js/agents/agent4_llm.js?v=5"></script>
+<script src="js/api/agent5_client.js?v=5"></script>
+<script src="js/ui/alert_audio.js?v=5"></script>
+<script src="js/ui/hud_renderer.js?v=5"></script>
+<script src="js/ui/health_monitor.js?v=5"></script>
+<script src="js/ui/time_machine.js?v=1"></script>
+<script src="js/game/driving_game.js?v=5"></script>
+<script>
+  // Load the 3D game on top of the 2D one, unless ?game=2d forces the legacy renderer.
+  // The 3D module overrides window.DrivingGame, so main.js picks up whichever loaded last.
+  // document.write keeps the include synchronous so main.js runs after the 3D class exists.
+  (function(){
+    if (new URLSearchParams(location.search).get('game') === '2d') return;
+    document.write('<script src="js/game/driving_game_3d.js?v=6"><\/script>');
+  })();
+</script>
+<script src="js/main.js?v=5"></script>
+
+<script>
+  // Mirror MCP log to Tab 3
+  document.addEventListener('DOMContentLoaded', () => {
+    const observer = new MutationObserver(() => {
+      const src = document.getElementById('mcp-log');
+      const dst = document.getElementById('mcp-log-full');
+      if (src && dst) dst.innerHTML = src.innerHTML;
+    });
+    const src = document.getElementById('mcp-log');
+    if (src) observer.observe(src, { childList: true });
+  });
+</script>
+
+</body>
+</html>

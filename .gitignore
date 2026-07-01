@@ -1,0 +1,110 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.pyc
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+.venv312/
+venv/
+env/
+.env.local
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+*.key
+*.pem
+*.pfx
+*.p12
+
+# ── Model files (large ONNX weights) ─────────────────────────────────────────
+models/**/*.onnx
+models/.pytest_cache/
+models/**/.cache/
+models/*.zip
+
+# ── Databases and caches ──────────────────────────────────────────────────────
+cabin_rag.db
+cabin_rag.db-shm
+cabin_rag.db-wal
+*.sqlite
+*.db
+*.db-shm
+*.db-wal
+.cache/
+
+# ── Test artifacts ────────────────────────────────────────────────────────────
+test_tts_greeting.wav
+test_tts_output.wav
+benchmark_log.csv
+
+# ── Node / frontend ───────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+.npm/
+
+# ── IDE / editor ─────────────────────────────────────────────────────────────
+.claude/
+CLAUDE.md
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.pytest_cache/
+
+# ── Logs and temp ─────────────────────────────────────────────────────────────
+*.log
+/tmp/
+*.tmp
+
+# ── Qualcomm SDKs ────────────────────────────────────────────────────────────
+ai-hub-apps/
+ai-hub-models/
+sparq-hackathon-2026/
+
+# ── Phase 2 internal (deliverables are separate) ─────────────────────────────
+phase2/
+submissions/
+pdfs/
+docs/
+*.pdf
+
+# ── Sample apps (Qualcomm reference code, not part of CabinAI) ───────────────
+sampleapp1/
+sampleapp2/
+
+# ── Internal scripts (not needed by judges) ──────────────────────────────────
+scripts/build_presentation.py
+scripts/build_speech_pdf.py
+scripts/build_phase2_deck.py
+scripts/build_technical_report.py
+scripts/build_demo_speech.py
+scripts/assemble_deliverables.py
+scripts/prepare_submission_repo.py
+scripts/setup_python312_venv.py
+scripts/test_aic100_connectivity.py
+
+# ── Misc files not part of the project ────────────────────────────────────────
+start.ps1
+package.json
+package-lock.json
+test_speech.wav
+test_tts_greeting.wav
+test_tts_output.wav
+
+# ── Compiled extensions ──────────────────────────────────────────────────────
+*.dll
+*.lib
+*.exp
+tts_samples/
