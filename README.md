@@ -1,6 +1,5 @@
 # CabinAI — Hybrid Multi-Agent VLA for Automotive In-Cabin Intelligence
 
-**SparQ 2026 Hackathon · Team RoboClaw · Track: Edge + Cloud AI — Automotive · Idea #09**
 
 > A production-grade, 7-agent Vision-Language-Action system that runs continuously in a
 > vehicle to monitor driver safety, understand voice commands, recognise hand gestures,
